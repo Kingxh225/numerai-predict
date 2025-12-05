@@ -1,4 +1,5 @@
 numerapi>=2.18.0
+pyarrow
 pandas
 numpy
 lightgbm
