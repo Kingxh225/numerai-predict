@@ -31,32 +31,12 @@ jobs:
         name: predictions
         path: predictions.csv
 
-    - name: Submit to Numerai
+        - name: Submit to Numerai
       env:
         NUMERAI_PUBLIC_ID: ${{ secrets.NUMERAI_PUBLIC_ID }}
         NUMERAI_SECRET_KEY: ${{ secrets.NUMERAI_SECRET_KEY }}
         NUMERAI_MODEL_ID: ${{ secrets.NUMERAI_MODEL_ID }}
       run: |
         python -c "
-        - name: Submit to Numerai (lightweight)
-      env:
-        NUMERAI_MODEL_ID: ${{ secrets.NUMERAI_MODEL_ID }}
-        NUMERAI_PUBLIC_ID: ${{ secrets.NUMERAI_PUBLIC_ID }}
-        NUMERAI_SECRET_KEY: ${{ secrets.NUMERAI_SECRET_KEY }}
-      run: |
-        python -c "
-        import os, requests, json
-        url = 'https://api.numer.ai/upload_predictions'
-        files = {'predictions': open('predictions.csv', 'rb')}
-        r = requests.post(url,
-            data={
-                'model_id': os.environ['NUMERAI_MODEL_ID'],
-                'public_id': os.environ['NUMERAI_PUBLIC_ID'],
-                'secret_key': os.environ['NUMERAI_SECRET_KEY']
-            },
-            files=files
-        )
-        print('Status:', r.status_code)
-        print('Response:', r.json())
-        assert r.status_code == 200, 'Upload failed!'
+        import numerapi, os; n = numerapi.NumerAPI(); print(n.upload_predictions('predictions.csv', model_id=os.environ['NUMERAI_MODEL_ID']))
         "
