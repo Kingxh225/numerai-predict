@@ -1,0 +1,42 @@
+name: Numerai Weekly Submit
+
+on:
+  schedule:
+    - cron: '30 2 * * 2'   # 每周二 02:30 UTC
+  workflow_dispatch:
+
+jobs:
+  predict-and-submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - run: pip install -r requirements.txt
+
+    - name: Run prediction
+      env:
+        NUMERAI_PUBLIC_ID: ${{ secrets.NUMERAI_PUBLIC_ID }}
+        NUMERAI_SECRET_KEY: ${{ secrets.NUMERAI_SECRET_KEY }}
+      run: python model/train_predict.py
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: predictions
+        path: predictions.csv
+
+    - name: Submit to Numerai
+      env:
+        NUMERAI_PUBLIC_ID: ${{ secrets.NUMERAI_PUBLIC_ID }}
+        NUMERAI_SECRET_KEY: ${{ secrets.NUMERAI_SECRET_KEY }}
+        NUMERAI_MODEL_ID: ${{ secrets.NUMERAI_MODEL_ID }}
+      run: |
+        python -c "
+import numerapi,os; n=numerapi.NumerAPI(); print(n.upload_predictions('predictions.csv', model_id=os.environ['NUMERAI_MODEL_ID']))"
+
