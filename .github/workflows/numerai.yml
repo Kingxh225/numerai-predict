@@ -31,12 +31,9 @@ jobs:
         name: predictions
         path: predictions.csv
 
-        - name: Submit to Numerai
+           - name: Submit to Numerai
       env:
         NUMERAI_PUBLIC_ID: ${{ secrets.NUMERAI_PUBLIC_ID }}
         NUMERAI_SECRET_KEY: ${{ secrets.NUMERAI_SECRET_KEY }}
         NUMERAI_MODEL_ID: ${{ secrets.NUMERAI_MODEL_ID }}
-      run: |
-        python -c "
-        import numerapi, os; n = numerapi.NumerAPI(); print(n.upload_predictions('predictions.csv', model_id=os.environ['NUMERAI_MODEL_ID']))
-        "
+      run: python -c "import numerapi, os; n = numerapi.NumerAPI(); print(n.upload_predictions('predictions.csv', model_id=os.environ['NUMERAI_MODEL_ID']))"
