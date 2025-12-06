@@ -20,12 +20,8 @@ def main():
 
     print("使用 LightGBM 原生 Dataset 低内存训练...")
     # 直接用 parquet 文件路径 + 只读特征列 + target，内存暴降
-    train_data = napi.get_training_data(features_only=True)  # numerapi 内置低内存方法
-    if train_data is None:
-        # 如果上面方法失效，用最稳的分块方式
         train = pd.read_parquet("v5.0/train.parquet", columns=feature_cols + ["target"])
-    else:
-        train = train_data
+
 
     live = pd.read_parquet("v5.0/live.parquet", columns=feature_cols)
     example = pd.read_parquet("v5.0/live_example_preds.parquet")
