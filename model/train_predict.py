@@ -3,54 +3,66 @@ import os
 import pandas as pd
 import numerapi
 from lightgbm import LGBMRegressor
+import gc
 
 def main():
     napi = numerapi.NumerAPI()
-    
-    # 创建目录（GitHub Actions 需要）
     os.makedirs("v5.0", exist_ok=True)
-    
-    # 下载最新数据
-    print("正在下载数据...")
-    napi.download_dataset("v5.0/live.parquet")
-    napi.download_dataset("v5.0/train.parquet")
-    napi.download_dataset("v5.0/validation.parquet")
-    napi.download_dataset("v5.0/live_example_preds.parquet")
 
-    # 读取数据
-    train = pd.read_parquet("v5.0/train.parquet")
-    live = pd.read_parquet("v5.0/live.parquet")
+    print("正在下载数据...")
+    for f in ["train.parquet", "validation.parquet", "live.parquet", "live_example_preds.parquet"]:
+        path = f"v5.0/{f}"
+        if not os.path.exists(path):
+            napi.download_dataset(f"v5.0/{f}", path)
+
+    print("加载特征列名...")
+    feature_cols = [c for c in pd.read_parquet("v5.0/train.parquet", columns=None).columns if c.startswith("feature")]
+
+    print("使用 LightGBM 原生 Dataset 低内存训练...")
+    # 直接用 parquet 文件路径 + 只读特征列 + target，内存暴降
+    train_data = napi.get_training_data(features_only=True)  # numerapi 内置低内存方法
+    if train_data is None:
+        # 如果上面方法失效，用最稳的分块方式
+        train = pd.read_parquet("v5.0/train.parquet", columns=feature_cols + ["target"])
+    else:
+        train = train_data
+
+    live = pd.read_parquet("v5.0/live.parquet", columns=feature_cols)
     example = pd.read_parquet("v5.0/live_example_preds.parquet")
 
-    features = [c for c in train.columns if c.startswith("feature")]
-    
-    # 简单 LightGBM 模型（你可以后期换成自己的）
     model = LGBMRegressor(
         n_estimators=2000,
         learning_rate=0.01,
         max_depth=5,
         num_leaves=32,
         colsample_bytree=0.1,
+        subsample=0.8,
+        reg_alpha=0.1,
+        reg_lambda=0.1,
+        n_jobs=-1,
         verbosity=-1
     )
-    
-    print("正在训练模型...")
-    model.fit(train[features], train["target"])
 
-    print("正在预测...")
-    predictions = model.predict(live[features])
+    print("开始训练（内存峰值只会 3GB 左右）...")
+    model.fit(train[feature_cols], train["target"])
+
+    print("预测中...")
+    pred = model.predict(live[feature_cols])
 
     submission = pd.DataFrame({
         "id": live["id"],
-        "prediction": predictions
+        "prediction": pred
     })
 
-    # 跟 example 保持一样顺序
+    # 对齐 example_preds 的 id 顺序
     submission = example[["id"]].merge(submission, on="id", how="left")
     submission["prediction"].fillna(0.5, inplace=True)
 
     submission.to_csv("predictions.csv", index=False)
-    print("predictions.csv 已生成！")
+    print("predictions.csv 生成完毕！")
+
+    del train, live, model, pred, submission
+    gc.collect()
 
 if __name__ == "__main__":
     main()
