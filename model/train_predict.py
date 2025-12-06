@@ -20,7 +20,7 @@ def main():
 
     print("使用 LightGBM 原生 Dataset 低内存训练...")
     # 直接用 parquet 文件路径 + 只读特征列 + target，内存暴降
-        train = pd.read_parquet("v5.0/train.parquet", columns=feature_cols + ["target"])
+    train = pd.read_parquet("v5.0/train.parquet", columns=feature_cols + ["target"])
 
 
     live = pd.read_parquet("v5.0/live.parquet", columns=feature_cols)
